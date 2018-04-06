@@ -1,20 +1,22 @@
 package main
 
 import (
-//	"encoding/hex"
+	// "encoding/hex"
 	"encoding/base64"
 	"fmt"
 
-//	"google.golang.org/grpc"
+	// "google.golang.org/grpc"
 //	"google.golang.org/grpc/credentials"
 
 //	remote "github.com/lightningnetwork/lnd/remotesigner"
 
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/roasbeef/btcd/btcec"
-//	"github.com/roasbeef/btcutil"
-//	"github.com/roasbeef/btcd/chaincfg"
+	"github.com/roasbeef/btcutil"
+	"github.com/roasbeef/btcd/chaincfg"
 	"github.com/roasbeef/btcd/chaincfg/chainhash"
+
+	"github.com/tv42/zbase32"
 )
 
 // nodeSigner is an implementation of the MessageSigner interface backed by the
@@ -41,31 +43,51 @@ func newNodeSigner(key *btcec.PrivateKey) *nodeSigner {
 // private key, then an error will be returned.
 func (n *nodeSigner) SignMessage(pubKey *btcec.PublicKey,
 	msg []byte) (*btcec.Signature, error) {
-/*
-	wif, err := btcutil.NewWIF(n.privKey, &chaincfg.SimNetParams, false)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
 
 	fmt.Println("Hi! I was asked to sign")
 	fmt.Println("____________ message ___________")
 	fmt.Println(msg)
 
+	// Otherwise, we'll sign the dsha256 of the target message.
+	digest := chainhash.DoubleHashB(msg)
+	fmt.Println("____________ hashed: _______")
+	fmt.Println(digest)
+	calc_sign, err := n.privKey.Sign(digest)
+	if err != nil {
+		return nil, fmt.Errorf("can't sign the message: %v", err)
+	}
+
+	// If this isn't our identity public key, then we'll exit early with an
+	// error as we can't sign with this key.
+	if !pubKey.IsEqual(n.privKey.PubKey()) {
+		return nil, fmt.Errorf("unknown public key")
+	}
+
+	fmt.Println("____________ proper signed: _______")
+	fmt.Println(calc_sign)
+	fmt.Println("____________")
+	fmt.Println(base64.StdEncoding.EncodeToString(calc_sign.Serialize()))
+	fmt.Println("____________")
+
+	wif, err := btcutil.NewWIF(n.privKey, &chaincfg.TestNet3Params, false)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
 	fmt.Println("____________ My private key is __________")
 	fmt.Println(wif.String())
 	fmt.Println("____________")
+	//
+	// fmt.Println("____________ My public key from WIF is __________")
+	// fmt.Println(wif.SerializePubKey())
+	// fmt.Println("____________")
+	//
+	// fmt.Println("____________ My public key is __________")
+	// fmt.Println(n.privKey.PubKey())
+	// fmt.Println("____________")
 
-	fmt.Println("____________ My public key from WIF is __________")
-	fmt.Println(wif.SerializePubKey())
-	fmt.Println("____________")
-
-	fmt.Println("____________ My public key is __________")
-	fmt.Println(n.privKey.PubKey())
-	fmt.Println("____________")
-
-	data := hex.EncodeToString( msg )
+	// data := hex.EncodeToString( msg )
 	r := newRemoteSigner()
 	sign, err := r.SignMessage( msg )
 	if err != nil {
@@ -91,39 +113,53 @@ func (n *nodeSigner) SignMessage(pubKey *btcec.PublicKey,
 
 	fmt.Println("____________ try to create signature __________")
 	fmt.Println(signature)
-	fmt.Println("____________")
+	fmt.Println("____________ base 64 ________________")
 	fmt.Println(base64.StdEncoding.EncodeToString(signature.Serialize()))
-*/
-	// If this isn't our identity public key, then we'll exit early with an
-	// error as we can't sign with this key.
-	if !pubKey.IsEqual(n.privKey.PubKey()) {
-		return nil, fmt.Errorf("unknown public key")
-	}
 
-	// Otherwise, we'll sign the dsha256 of the target message.
-	digest := chainhash.DoubleHashB(msg)
-	calc_sign, err := n.privKey.Sign(digest)
-	if err != nil {
-		return nil, fmt.Errorf("can't sign the message: %v", err)
-	}
+	fmt.Println("____________ zbase 32 ________________")
+	fmt.Println(zbase32.EncodeToString(signature.Serialize()))
 
-	fmt.Println("____________ proper signed: _______")
-	fmt.Println(calc_sign)
-	fmt.Println("____________")
-	fmt.Println(base64.StdEncoding.EncodeToString(calc_sign.Serialize()))
-	fmt.Println("____________")
-
-	return calc_sign, nil
+	return signature, nil
 }
 
 // SignCompact signs a double-sha256 digest of the msg parameter under the
 // resident node's private key. The returned signature is a pubkey-recoverable
 // signature.
 func (n *nodeSigner) SignCompact(msg []byte) ([]byte, error) {
+	r := newRemoteSigner()
+	sign, err := r.SignMessage( msg )
+	if err != nil {
+		return nil, fmt.Errorf("can't sign the message: %v", err)
+	}
+
+	fmt.Println("___________ remote server returned: ___________")
+	fmt.Println(sign)
+
+	sigBytes, err := base64.StdEncoding.DecodeString(sign)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	signature, err := btcec.ParseSignature(sigBytes, btcec.S256())
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	sigCompactBytes := signature.Serialize()
+
 	// We'll sign the dsha256 of the target message.
 	digest := chainhash.DoubleHashB(msg)
 
-	return n.SignDigestCompact(digest)
+	bytes, err := n.SignDigestCompact(digest)
+
+	fmt.Println("[SIGN COMPACT]: valid bytes")
+	fmt.Println(bytes)
+	fmt.Println("[SIGN COMPACT]: remote bytes")
+	fmt.Println(sigCompactBytes)
+
+	return bytes, err
 }
 
 // SignDigestCompact signs the provided message digest under the resident
@@ -139,6 +175,11 @@ func (n *nodeSigner) SignDigestCompact(hash []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't sign the hash: %v", err)
 	}
+
+	fmt.Println("[SIGN COMPACT]")
+	fmt.Println("____________ proper signed: _______")
+	fmt.Println(base64.StdEncoding.EncodeToString(sig))
+	fmt.Println("____________")
 
 	return sig, nil
 }
