@@ -65,3 +65,44 @@ func (r *remoteSigner) SignMessage(msg []byte) (string, error) {
 
 	return signed_message.Signature, err
 }
+
+
+// SignCompact signs a double-sha256 digest of the msg parameter under the
+// resident node's private key. The returned signature is a pubkey-recoverable
+// signature.
+func (r *remoteSigner) SignCompact(msg []byte) ([]byte, error) {
+	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("fail to dial: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewBrowserSignClient( conn )
+
+	data := &pb.SignMessageRequest{Msg: msg}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	signed_message, err := client.SignCompact( ctx, data )
+	if err != nil {
+		log.Fatalf("fail to call: %v", err)
+		return nil, err
+	}
+
+	sigBytes, err := base64.StdEncoding.DecodeString(signed_message.Signature)
+	if err != nil {
+		log.Fatalf("cant decode: %v", err)
+		return nil, err
+	}
+	//
+	// signature, err := btcec.ParseSignature(sigBytes, btcec.S256())
+	// if err != nil {
+	// 	log.Fatalf("cant parse signature: %v", err)
+	// 	return nil, err
+	// }
+	//
+	// log.Printf("CLIENT: %v", base64.StdEncoding.EncodeToString(signature.Serialize()))
+
+	return sigBytes, err
+}

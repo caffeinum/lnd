@@ -10,6 +10,7 @@ It is generated from these files:
 It has these top-level messages:
 	SignMessageRequest
 	SignMessageResponse
+	SignCompactResponse
 */
 package browser
 
@@ -68,9 +69,27 @@ func (m *SignMessageResponse) GetSignature() string {
 	return ""
 }
 
+type SignCompactResponse struct {
+	// / The compacted signature for the given message
+	Signature string `protobuf:"bytes,1,opt,name=signature" json:"signature,omitempty"`
+}
+
+func (m *SignCompactResponse) Reset()                    { *m = SignCompactResponse{} }
+func (m *SignCompactResponse) String() string            { return proto.CompactTextString(m) }
+func (*SignCompactResponse) ProtoMessage()               {}
+func (*SignCompactResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *SignCompactResponse) GetSignature() string {
+	if m != nil {
+		return m.Signature
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*SignMessageRequest)(nil), "browser.SignMessageRequest")
 	proto.RegisterType((*SignMessageResponse)(nil), "browser.SignMessageResponse")
+	proto.RegisterType((*SignCompactResponse)(nil), "browser.SignCompactResponse")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -84,11 +103,16 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for BrowserSign service
 
 type BrowserSignClient interface {
-	// * lncli: `signmessage`
-	// SignMessage signs a message with this node's private key. The returned
-	// signature string is `zbase32` encoded and pubkey recoverable, meaning that
+	// * `remote`: `signmessage`
+	// SignMessage signs a message with this user's private key. The returned
+	// signature string is `base64` encoded and pubkey recoverable, meaning that
 	// only the message digest and signature are needed for verification.
 	SignMessage(ctx context.Context, in *SignMessageRequest, opts ...grpc.CallOption) (*SignMessageResponse, error)
+	// * `remote`: `signmessage`
+	// SignMessage signs a message with this user's private key. The returned
+	// signature string is `base64` encoded and pubkey recoverable, meaning that
+	// only the message digest and signature are needed for verification.
+	SignCompact(ctx context.Context, in *SignMessageRequest, opts ...grpc.CallOption) (*SignCompactResponse, error)
 }
 
 type browserSignClient struct {
@@ -108,14 +132,28 @@ func (c *browserSignClient) SignMessage(ctx context.Context, in *SignMessageRequ
 	return out, nil
 }
 
+func (c *browserSignClient) SignCompact(ctx context.Context, in *SignMessageRequest, opts ...grpc.CallOption) (*SignCompactResponse, error) {
+	out := new(SignCompactResponse)
+	err := grpc.Invoke(ctx, "/browser.BrowserSign/SignCompact", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for BrowserSign service
 
 type BrowserSignServer interface {
-	// * lncli: `signmessage`
-	// SignMessage signs a message with this node's private key. The returned
-	// signature string is `zbase32` encoded and pubkey recoverable, meaning that
+	// * `remote`: `signmessage`
+	// SignMessage signs a message with this user's private key. The returned
+	// signature string is `base64` encoded and pubkey recoverable, meaning that
 	// only the message digest and signature are needed for verification.
 	SignMessage(context.Context, *SignMessageRequest) (*SignMessageResponse, error)
+	// * `remote`: `signmessage`
+	// SignMessage signs a message with this user's private key. The returned
+	// signature string is `base64` encoded and pubkey recoverable, meaning that
+	// only the message digest and signature are needed for verification.
+	SignCompact(context.Context, *SignMessageRequest) (*SignCompactResponse, error)
 }
 
 func RegisterBrowserSignServer(s *grpc.Server, srv BrowserSignServer) {
@@ -140,6 +178,24 @@ func _BrowserSign_SignMessage_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BrowserSign_SignCompact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserSignServer).SignCompact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/browser.BrowserSign/SignCompact",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserSignServer).SignCompact(ctx, req.(*SignMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _BrowserSign_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "browser.BrowserSign",
 	HandlerType: (*BrowserSignServer)(nil),
@@ -147,6 +203,10 @@ var _BrowserSign_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SignMessage",
 			Handler:    _BrowserSign_SignMessage_Handler,
+		},
+		{
+			MethodName: "SignCompact",
+			Handler:    _BrowserSign_SignCompact_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -156,15 +216,16 @@ var _BrowserSign_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("browser_sign.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 150 bytes of a gzipped FileDescriptorProto
+	// 172 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x4a, 0x2a, 0xca, 0x2f,
 	0x2f, 0x4e, 0x2d, 0x8a, 0x2f, 0xce, 0x4c, 0xcf, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62,
 	0x87, 0x8a, 0x29, 0xa9, 0x71, 0x09, 0x05, 0x67, 0xa6, 0xe7, 0xf9, 0xa6, 0x16, 0x17, 0x27, 0xa6,
 	0xa7, 0x06, 0xa5, 0x16, 0x96, 0xa6, 0x16, 0x97, 0x08, 0x09, 0x70, 0x31, 0xe7, 0x16, 0xa7, 0x4b,
 	0x30, 0x2a, 0x30, 0x6a, 0xf0, 0x04, 0x81, 0x98, 0x4a, 0xc6, 0x5c, 0xc2, 0x28, 0xea, 0x8a, 0x0b,
 	0xf2, 0xf3, 0x8a, 0x53, 0x85, 0x64, 0xb8, 0x38, 0x41, 0xa6, 0x26, 0x96, 0x94, 0x16, 0xa5, 0x82,
-	0x95, 0x73, 0x06, 0x21, 0x04, 0x8c, 0xc2, 0xb9, 0xb8, 0x9d, 0x20, 0xf6, 0x80, 0xf4, 0x0a, 0x79,
-	0x70, 0x71, 0x23, 0x99, 0x21, 0x24, 0xad, 0x07, 0x75, 0x84, 0x1e, 0xa6, 0x0b, 0xa4, 0x64, 0xb0,
-	0x4b, 0x42, 0xac, 0x4d, 0x62, 0x03, 0xfb, 0xc2, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x9e, 0x02,
-	0x28, 0xb3, 0xdb, 0x00, 0x00, 0x00,
+	0x95, 0x73, 0x06, 0x21, 0x04, 0x60, 0x9a, 0x9c, 0xf3, 0x73, 0x0b, 0x12, 0x93, 0x4b, 0x88, 0xd3,
+	0x64, 0xb4, 0x90, 0x91, 0x8b, 0xdb, 0x09, 0xe2, 0x3a, 0x90, 0x66, 0x21, 0x0f, 0x2e, 0x6e, 0x24,
+	0x9b, 0x85, 0xa4, 0xf5, 0xa0, 0x4e, 0xd7, 0xc3, 0x74, 0xb7, 0x94, 0x0c, 0x76, 0x49, 0xa8, 0xbd,
+	0x50, 0x93, 0xa0, 0xce, 0x21, 0xc5, 0x24, 0x34, 0x1f, 0x24, 0xb1, 0x81, 0x43, 0xd1, 0x18, 0x10,
+	0x00, 0x00, 0xff, 0xff, 0xe5, 0x3c, 0xa8, 0xc8, 0x5b, 0x01, 0x00, 0x00,
 }

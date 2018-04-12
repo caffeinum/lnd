@@ -127,27 +127,13 @@ func (n *nodeSigner) SignMessage(pubKey *btcec.PublicKey,
 // signature.
 func (n *nodeSigner) SignCompact(msg []byte) ([]byte, error) {
 	r := newRemoteSigner()
-	sign, err := r.SignMessage( msg )
+	sigBytes, err := r.SignCompact( msg )
 	if err != nil {
 		return nil, fmt.Errorf("can't sign the message: %v", err)
 	}
 
-	fmt.Println("___________ remote server returned: ___________")
-	fmt.Println(sign)
-
-	sigBytes, err := base64.StdEncoding.DecodeString(sign)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
-	signature, err := btcec.ParseSignature(sigBytes, btcec.S256())
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-
-	sigCompactBytes := signature.Serialize()
+	fmt.Println("[SIGN COMPACT]: remote server returned:")
+	fmt.Println(sigBytes)
 
 	// We'll sign the dsha256 of the target message.
 	digest := chainhash.DoubleHashB(msg)
@@ -156,10 +142,8 @@ func (n *nodeSigner) SignCompact(msg []byte) ([]byte, error) {
 
 	fmt.Println("[SIGN COMPACT]: valid bytes")
 	fmt.Println(bytes)
-	fmt.Println("[SIGN COMPACT]: remote bytes")
-	fmt.Println(sigCompactBytes)
 
-	return bytes, err
+	return sigBytes, err
 }
 
 // SignDigestCompact signs the provided message digest under the resident
@@ -175,11 +159,6 @@ func (n *nodeSigner) SignDigestCompact(hash []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't sign the hash: %v", err)
 	}
-
-	fmt.Println("[SIGN COMPACT]")
-	fmt.Println("____________ proper signed: _______")
-	fmt.Println(base64.StdEncoding.EncodeToString(sig))
-	fmt.Println("____________")
 
 	return sig, nil
 }
