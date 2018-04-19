@@ -326,6 +326,9 @@ func lndMain() error {
 
 			if pubKey.IsEqual(idPrivKey.PubKey()) {
 				return nodeSigner.SignMessage(pubKey, msg)
+			} else {
+				fmt.Printf("[PUB KEY FROM FUNDING MANAGER]: %v", pubKey)
+				fmt.Printf("[PUB KEY FROM NODE SIGNER]: %v", idPrivKey.PubKey())
 			}
 
 			return activeChainControl.msgSigner.SignMessage(

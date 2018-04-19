@@ -1,14 +1,10 @@
 package main
 
 import (
-	// "encoding/hex"
 	"encoding/base64"
 	"fmt"
 
-	// "google.golang.org/grpc"
-//	"google.golang.org/grpc/credentials"
-
-//	remote "github.com/lightningnetwork/lnd/remotesigner"
+	"github.com/lightningnetwork/lnd/remotesigner"
 
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/roasbeef/btcd/btcec"
@@ -47,21 +43,21 @@ func (n *nodeSigner) SignMessage(pubKey *btcec.PublicKey,
 	fmt.Println("Hi! I was asked to sign")
 	fmt.Println("____________ message ___________")
 	fmt.Println(msg)
-
-	// Otherwise, we'll sign the dsha256 of the target message.
+	//
+	// // Otherwise, we'll sign the dsha256 of the target message.
 	digest := chainhash.DoubleHashB(msg)
-	fmt.Println("____________ hashed: _______")
-	fmt.Println(digest)
-	calc_sign, err := n.privKey.Sign(digest)
+	calc_sign, err := n.privKey.SignRemotely(digest, "node")
 	if err != nil {
 		return nil, fmt.Errorf("can't sign the message: %v", err)
 	}
 
-	// If this isn't our identity public key, then we'll exit early with an
-	// error as we can't sign with this key.
-	if !pubKey.IsEqual(n.privKey.PubKey()) {
-		return nil, fmt.Errorf("unknown public key")
-	}
+	return calc_sign, nil
+
+	// // If this isn't our identity public key, then we'll exit early with an
+	// // error as we can't sign with this key.
+	// if !pubKey.IsEqual(n.privKey.PubKey()) {
+	// 	return nil, fmt.Errorf("unknown public key")
+	// }
 
 	fmt.Println("____________ proper signed: _______")
 	fmt.Println(calc_sign)
@@ -69,7 +65,7 @@ func (n *nodeSigner) SignMessage(pubKey *btcec.PublicKey,
 	fmt.Println(base64.StdEncoding.EncodeToString(calc_sign.Serialize()))
 	fmt.Println("____________")
 
-	wif, err := btcutil.NewWIF(n.privKey, &chaincfg.TestNet3Params, false)
+	wif, err := btcutil.NewWIF(n.privKey, &chaincfg.SimNetParams, false)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -77,6 +73,8 @@ func (n *nodeSigner) SignMessage(pubKey *btcec.PublicKey,
 
 	fmt.Println("____________ My private key is __________")
 	fmt.Println(wif.String())
+	fmt.Println("____________")
+	fmt.Println(n.privKey.Serialize())
 	fmt.Println("____________")
 	//
 	// fmt.Println("____________ My public key from WIF is __________")
@@ -87,8 +85,7 @@ func (n *nodeSigner) SignMessage(pubKey *btcec.PublicKey,
 	// fmt.Println(n.privKey.PubKey())
 	// fmt.Println("____________")
 
-	// data := hex.EncodeToString( msg )
-	r := newRemoteSigner()
+	r := remotesigner.NewRemoteSigner()
 	sign, err := r.SignMessage( msg )
 	if err != nil {
 		return nil, fmt.Errorf("can't sign the message: %v", err)
@@ -126,7 +123,7 @@ func (n *nodeSigner) SignMessage(pubKey *btcec.PublicKey,
 // resident node's private key. The returned signature is a pubkey-recoverable
 // signature.
 func (n *nodeSigner) SignCompact(msg []byte) ([]byte, error) {
-	r := newRemoteSigner()
+	r := remotesigner.NewRemoteSigner()
 	sigBytes, err := r.SignCompact( msg )
 	if err != nil {
 		return nil, fmt.Errorf("can't sign the message: %v", err)
